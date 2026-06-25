@@ -261,6 +261,7 @@ struct DashboardView: View {
                 .environmentObject(appState)
         }
         .onAppear {
+            NSApp.activate(ignoringOtherApps: true)
             if appState.baseURL.isEmpty {
                 showingSettings = true
             } else {
