@@ -11,7 +11,7 @@ build:
 	@echo "Compiling Swift files..."
 	swiftc Sources/Models.swift Sources/Views.swift \
 		-o dist/$(APP_NAME).app/Contents/MacOS/$(APP_NAME) \
-		-target arm64-apple-macosx11.0 \
+		-target arm64-apple-macosx13.0 \
 		-framework SwiftUI -framework AppKit -framework Foundation
 		
 	@echo "Copying Info.plist and Icon..."

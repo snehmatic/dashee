@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct GlassCard<Content: View>: View {
     @EnvironmentObject var appState: AppState
@@ -191,6 +192,27 @@ struct DashboardView: View {
                                value: String(format: "$%.2f", appState.metrics.dailySpendLeft))
                 }
                 
+                if !appState.metrics.history.isEmpty {
+                    GlassCard(title: "7-DAY SPEND TREND") {
+                        Chart {
+                            ForEach(appState.metrics.history) { point in
+                                BarMark(
+                                    x: .value("Date", point.date, unit: .day),
+                                    y: .value("Spend", point.spend)
+                                )
+                                .foregroundStyle(Color.accentColor.gradient)
+                                .cornerRadius(4)
+                            }
+                        }
+                        .frame(height: 120)
+                        .chartXAxis {
+                            AxisMarks(values: .stride(by: .day)) { _ in
+                                AxisValueLabel(format: .dateTime.weekday(.abbreviated))
+                            }
+                        }
+                    }
+                }
+                
                 Spacer()
             }
             .padding(30)
@@ -261,10 +283,20 @@ struct DasheeApp: App {
         WindowGroup {
             DashboardView()
                 .environmentObject(appState)
-                .frame(minWidth: 700, minHeight: 550)
-                // Window styling
+                .frame(minWidth: 700, minHeight: 650)
                 .background(Color.clear)
         }
         .windowStyle(.hiddenTitleBar)
+        
+        MenuBarExtra("Dashee", systemImage: "chart.xyaxis.line") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Today's Spend: $\(String(format: "%.2f", appState.metrics.todaysSpend))")
+                Text("Budget Burn: \(String(format: "%.1f", appState.metrics.burnPercent))%")
+                Divider()
+                Button("Refresh") { appState.refresh() }
+                Button("Quit") { NSApplication.shared.terminate(nil) }
+            }
+            .padding()
+        }
     }
 }
