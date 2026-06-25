@@ -9,7 +9,6 @@ build:
 		--noconfirm \
 		--windowed \
 		--name "$(APP_NAME)" \
-		--icon=NONE \
 		--hidden-import=requests \
 		--hidden-import=dotenv \
 		$(MAIN_SCRIPT)
