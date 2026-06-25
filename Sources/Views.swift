@@ -72,6 +72,7 @@ struct VisualEffectView: NSViewRepresentable {
 struct DashboardView: View {
     @EnvironmentObject var appState: AppState
     @State private var showingSettings = false
+    @State private var hoveredDate: Date? = nil
     
     var progressColor: Color {
         let p = appState.metrics.burnPercent
@@ -91,132 +92,169 @@ struct DashboardView: View {
                     .ignoresSafeArea()
             }
             
-            VStack(spacing: 24) {
-                // Header
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Dashee")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                        Text("User: \(appState.metrics.userId)")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                        Text("Last Sync: \(appState.metrics.syncTime)")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    
-                    HStack(spacing: 12) {
-                        Button(action: { showingSettings = true }) {
-                            Image(systemName: "gearshape.fill")
-                            Text("Settings")
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Dashee")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                            Text("User: \(appState.metrics.userId)")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                            Text("Last Sync: \(appState.metrics.syncTime)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(Color.secondary.opacity(0.2))
-                        .cornerRadius(8)
+                        Spacer()
                         
-                        Button(action: { appState.refresh() }) {
-                            HStack {
-                                if appState.isRefreshing {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                        .colorInvert() // Makes it white to match the button
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
+                        HStack(spacing: 12) {
+                            Button(action: { showingSettings = true }) {
+                                Image(systemName: "gearshape.fill")
+                                Text("Settings")
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(Color.secondary.opacity(0.2))
+                            .cornerRadius(8)
+                            
+                            Button(action: { appState.refresh() }) {
+                                HStack {
+                                    if appState.isRefreshing {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .colorInvert()
+                                    } else {
+                                        Image(systemName: "arrow.clockwise")
+                                    }
+                                    Text(appState.isRefreshing ? "Refreshing..." : "Refresh")
                                 }
-                                Text(appState.isRefreshing ? "Refreshing..." : "Refresh")
+                                .frame(width: 110)
                             }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 16).padding(.vertical, 8)
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                            .disabled(appState.isRefreshing)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                        .disabled(appState.isRefreshing)
                     }
-                }
-                
-                if let err = appState.errorMessage {
-                    Text(err)
-                        .foregroundColor(.red)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.red.opacity(0.1))
-                        .cornerRadius(8)
-                }
-                
-                // Primary Metrics
-                HStack(spacing: 20) {
-                    MetricCard(title: "TODAY'S SPEND", 
-                               value: String(format: "$%.2f", appState.metrics.todaysSpend),
-                               isWarning: appState.metrics.todaysSpend > appState.metrics.dailySpendLeft && appState.metrics.dailySpendLeft > 0)
                     
-                    MetricCard(title: "TOTAL SPENT", 
-                               value: String(format: "$%.2f", appState.metrics.spend))
+                    if let err = appState.errorMessage {
+                        Text(err)
+                            .foregroundColor(.red)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(8)
+                    }
                     
-                    MetricCard(title: "MAX BUDGET", 
-                               value: appState.metrics.maxBudget != nil ? String(format: "$%.2f", appState.metrics.maxBudget!) : "No Limit")
-                }
-                
-                // Budget Pacing
-                GlassCard(title: "BUDGET BURN PROGRESS") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.secondary.opacity(0.2))
-                                    .frame(height: 12)
-                                
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(progressColor)
-                                    .frame(width: min(CGFloat(appState.metrics.burnPercent / 100.0) * geometry.size.width, geometry.size.width), height: 12)
-                                    .animation(.spring(), value: appState.metrics.burnPercent)
-                            }
-                        }
-                        .frame(height: 12)
+                    // Primary Metrics
+                    HStack(spacing: 20) {
+                        MetricCard(title: "TODAY'S SPEND", 
+                                   value: String(format: "$%.2f", appState.metrics.todaysSpend),
+                                   isWarning: appState.metrics.todaysSpend > appState.metrics.dailySpendLeft && appState.metrics.dailySpendLeft > 0)
                         
-                        let mbStr = appState.metrics.maxBudget != nil ? String(format: "$%.2f", appState.metrics.maxBudget!) : "No Limit"
-                        Text("\(String(format: "%.1f", appState.metrics.burnPercent))% ($\(String(format: "%.2f", appState.metrics.spend)) / \(mbStr)) • \(appState.metrics.daysToReset) days to reset")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
+                        MetricCard(title: "TOTAL SPENT", 
+                                   value: String(format: "$%.2f", appState.metrics.spend))
+                        
+                        MetricCard(title: "MAX BUDGET", 
+                                   value: appState.metrics.maxBudget != nil ? String(format: "$%.2f", appState.metrics.maxBudget!) : "No Limit")
                     }
-                }
-                
-                // Velocity Panel
-                HStack(spacing: 20) {
-                    MetricCard(title: "AVG SPEND / DAY", 
-                               value: String(format: "$%.2f", appState.metrics.avgSpendPerDay))
                     
-                    MetricCard(title: "ALLOWED SPEND / DAY", 
-                               value: String(format: "$%.2f", appState.metrics.dailySpendLeft))
-                }
-                
-                if !appState.metrics.history.isEmpty {
-                    GlassCard(title: "7-DAY SPEND TREND") {
-                        Chart {
-                            ForEach(appState.metrics.history) { point in
-                                BarMark(
-                                    x: .value("Date", point.date, unit: .day),
-                                    y: .value("Spend", point.spend)
-                                )
-                                .foregroundStyle(Color.accentColor.gradient)
-                                .cornerRadius(4)
+                    // Budget Pacing
+                    GlassCard(title: "BUDGET BURN PROGRESS") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.secondary.opacity(0.2))
+                                        .frame(height: 12)
+                                    
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(progressColor)
+                                        .frame(width: min(CGFloat(appState.metrics.burnPercent / 100.0) * geometry.size.width, geometry.size.width), height: 12)
+                                        .animation(.spring(), value: appState.metrics.burnPercent)
+                                }
                             }
+                            .frame(height: 12)
+                            
+                            let mbStr = appState.metrics.maxBudget != nil ? String(format: "$%.2f", appState.metrics.maxBudget!) : "No Limit"
+                            Text("\(String(format: "%.1f", appState.metrics.burnPercent))% ($\(String(format: "%.2f", appState.metrics.spend)) / \(mbStr)) • \(appState.metrics.daysToReset) days to reset")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
                         }
-                        .frame(height: 120)
-                        .chartXAxis {
-                            AxisMarks(values: .stride(by: .day)) { _ in
-                                AxisValueLabel(format: .dateTime.weekday(.abbreviated))
+                    }
+                    
+                    // Velocity Panel
+                    HStack(spacing: 20) {
+                        MetricCard(title: "AVG SPEND / DAY", 
+                                   value: String(format: "$%.2f", appState.metrics.avgSpendPerDay))
+                        
+                        MetricCard(title: "ALLOWED SPEND / DAY", 
+                                   value: String(format: "$%.2f", appState.metrics.dailySpendLeft))
+                    }
+                    
+                    if !appState.metrics.history.isEmpty {
+                        GlassCard(title: "7-DAY SPEND TREND") {
+                            Chart {
+                                ForEach(appState.metrics.history) { point in
+                                    BarMark(
+                                        x: .value("Date", point.date, unit: .day),
+                                        y: .value("Spend", point.spend)
+                                    )
+                                    .foregroundStyle(Color.accentColor.gradient)
+                                    .cornerRadius(4)
+                                }
+                                
+                                if let hoveredDate {
+                                    RuleMark(x: .value("Selected", hoveredDate, unit: .day))
+                                        .foregroundStyle(Color.secondary.opacity(0.5))
+                                        .annotation(position: .top) {
+                                            if let point = appState.metrics.history.first(where: { Calendar.current.isDate($0.date, inSameDayAs: hoveredDate) }) {
+                                                Text("$\(String(format: "%.2f", point.spend))")
+                                                    .font(.caption.bold())
+                                                    .padding(6)
+                                                    .background(Color(NSColor.windowBackgroundColor))
+                                                    .cornerRadius(6)
+                                                    .shadow(radius: 3)
+                                            }
+                                        }
+                                }
+                            }
+                            .frame(height: 120)
+                            .chartXAxis {
+                                AxisMarks(values: .stride(by: .day)) { _ in
+                                    AxisValueLabel(format: .dateTime.weekday(.abbreviated))
+                                }
+                            }
+                            .chartOverlay { proxy in
+                                GeometryReader { geometry in
+                                    Rectangle().fill(.clear).contentShape(Rectangle())
+                                        .onContinuousHover { phase in
+                                            switch phase {
+                                            case .active(let location):
+                                                let x = location.x - geometry[proxy.plotAreaFrame].origin.x
+                                                if let date: Date = proxy.value(atX: x) {
+                                                    // Snap to closest date in history
+                                                    if let closest = appState.metrics.history.min(by: { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }) {
+                                                        hoveredDate = closest.date
+                                                    }
+                                                }
+                                            case .ended:
+                                                hoveredDate = nil
+                                            }
+                                        }
+                                }
                             }
                         }
                     }
+                    
+                    Spacer()
                 }
-                
-                Spacer()
+                .padding(30)
+                .padding(.top, 20) // Extra padding to clear hidden title bar traffic lights
             }
-            .padding(30)
-            
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
