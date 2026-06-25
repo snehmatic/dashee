@@ -14,7 +14,7 @@ You can install Dashee directly via Homebrew!
 
 ```bash
 # Add the custom tap
-brew tap snehashish/dashee
+brew tap snehmatic/dashee
 
 # Install the app
 brew install --cask dashee
@@ -29,7 +29,7 @@ If you wish to build the app from source:
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/snehashish/dashee.git
+   git clone https://github.com/snehmatic/dashee.git
    cd dashee
    ```
 2. Install Python dependencies:
