@@ -313,6 +313,101 @@ struct SettingsView: View {
     }
 }
 
+struct MenuBarWidgetView: View {
+    @EnvironmentObject var appState: AppState
+    
+    var progressColor: Color {
+        let p = appState.metrics.burnPercent
+        if p >= 90 { return .red }
+        if p >= 75 { return .yellow }
+        return .green
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                Text("Dashee Status")
+                    .font(.headline)
+                Spacer()
+                Button(action: { appState.refresh() }) {
+                    Image(systemName: "arrow.clockwise")
+                        .rotationEffect(Angle(degrees: appState.isRefreshing ? 360 : 0))
+                }
+                .buttonStyle(.plain)
+                .disabled(appState.isRefreshing)
+            }
+            
+            VStack(spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("TODAY'S SPEND")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        
+                        let isOver = appState.metrics.todaysSpend > appState.metrics.dailySpendLeft && appState.metrics.dailySpendLeft > 0
+                        Text(String(format: "$%.2f", appState.metrics.todaysSpend))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(isOver ? .red : .primary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing) {
+                        Text("ALLOWED / DAY")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        Text(String(format: "$%.2f", appState.metrics.dailySpendLeft))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(.green)
+                    }
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("BUDGET BURN")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("\(String(format: "%.1f", appState.metrics.burnPercent))%")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(progressColor)
+                    }
+                    
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.secondary.opacity(0.2))
+                                .frame(height: 8)
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(progressColor)
+                                .frame(width: min(CGFloat(appState.metrics.burnPercent / 100.0) * geometry.size.width, geometry.size.width), height: 8)
+                        }
+                    }
+                    .frame(height: 8)
+                }
+            }
+            
+            HStack {
+                Text("Resets in \(appState.metrics.daysToReset) days")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("Quit") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .buttonStyle(.plain)
+                .font(.caption2)
+                .foregroundColor(.red)
+            }
+        }
+        .padding(20)
+        .frame(width: 280)
+        // Match the user's selected mode
+        .preferredColorScheme(appState.isDarkMode ? .dark : .light)
+    }
+}
+
 @main
 struct DasheeApp: App {
     @StateObject var appState = AppState()
@@ -326,15 +421,10 @@ struct DasheeApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         
-        MenuBarExtra("Dashee", systemImage: "chart.xyaxis.line") {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Today's Spend: $\(String(format: "%.2f", appState.metrics.todaysSpend))")
-                Text("Budget Burn: \(String(format: "%.1f", appState.metrics.burnPercent))%")
-                Divider()
-                Button("Refresh") { appState.refresh() }
-                Button("Quit") { NSApplication.shared.terminate(nil) }
-            }
-            .padding()
+        MenuBarExtra("Dashee", systemImage: "bolt.fill") {
+            MenuBarWidgetView()
+                .environmentObject(appState)
         }
+        .menuBarExtraStyle(.window)
     }
 }
