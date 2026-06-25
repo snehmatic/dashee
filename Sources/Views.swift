@@ -315,6 +315,7 @@ struct SettingsView: View {
 
 struct MenuBarWidgetView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.openWindow) var openWindow
     
     var progressColor: Color {
         let p = appState.metrics.burnPercent
@@ -390,10 +391,8 @@ struct MenuBarWidgetView: View {
             
             HStack {
                 Button("Open Dashboard") {
-                    if NSApp.windows.count > 0 {
-                        NSApp.activate(ignoringOtherApps: true)
-                        NSApp.windows.first?.makeKeyAndOrderFront(nil)
-                    }
+                    openWindow(id: "dashboard")
+                    NSApp.activate(ignoringOtherApps: true)
                 }
                 .buttonStyle(.plain)
                 .font(.caption2.bold())
@@ -421,7 +420,7 @@ struct DasheeApp: App {
     @StateObject var appState = AppState()
     
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "dashboard") {
             DashboardView()
                 .environmentObject(appState)
                 .frame(minWidth: 700, minHeight: 650)
