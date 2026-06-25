@@ -117,9 +117,13 @@ struct DashboardView: View {
                         
                         Button(action: { appState.refresh() }) {
                             HStack {
-                                Image(systemName: "arrow.clockwise")
-                                    .rotationEffect(Angle(degrees: appState.isRefreshing ? 360 : 0))
-                                    .animation(appState.isRefreshing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: appState.isRefreshing)
+                                if appState.isRefreshing {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .colorInvert() // Makes it white to match the button
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
+                                }
                                 Text(appState.isRefreshing ? "Refreshing..." : "Refresh")
                             }
                         }
