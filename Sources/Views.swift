@@ -25,9 +25,9 @@ struct GlassCard<Content: View>: View {
         .background(
             Group {
                 if appState.useGlassEffect {
-                    VisualEffectView(material: appState.isDarkMode ? .hudWindow : .headerView, blendingMode: .withinWindow)
+                    VisualEffectView(material: appState.isDarkMode ? .hudWindow : .popover, blendingMode: .withinWindow)
                 } else {
-                    Color(NSColor.controlBackgroundColor)
+                    Color.secondary.opacity(0.1)
                 }
             }
         )
@@ -92,7 +92,7 @@ struct DashboardView: View {
                     .ignoresSafeArea()
             }
             
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     // Header
                     HStack(alignment: .top) {
@@ -389,10 +389,18 @@ struct MenuBarWidgetView: View {
             }
             
             HStack {
-                Text("Resets in \(appState.metrics.daysToReset) days")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                Button("Open Dashboard") {
+                    if NSApp.windows.count > 0 {
+                        NSApp.activate(ignoringOtherApps: true)
+                        NSApp.windows.first?.makeKeyAndOrderFront(nil)
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(.caption2.bold())
+                .foregroundColor(.accentColor)
+                
                 Spacer()
+                
                 Button("Quit") {
                     NSApplication.shared.terminate(nil)
                 }
