@@ -14,8 +14,9 @@ build:
 		-target arm64-apple-macosx11.0 \
 		-framework SwiftUI -framework AppKit -framework Foundation
 		
-	@echo "Copying Info.plist..."
+	@echo "Copying Info.plist and Icon..."
 	cp Info.plist dist/$(APP_NAME).app/Contents/Info.plist
+	cp AppIcon.icns dist/$(APP_NAME).app/Contents/Resources/AppIcon.icns
 	
 	@echo "Build complete: dist/$(APP_NAME).app"
 
