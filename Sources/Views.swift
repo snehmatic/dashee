@@ -420,7 +420,7 @@ struct DasheeApp: App {
     @StateObject var appState = AppState()
     
     var body: some Scene {
-        WindowGroup(id: "dashboard") {
+        Window("Dashee", id: "dashboard") {
             DashboardView()
                 .environmentObject(appState)
                 .frame(minWidth: 700, minHeight: 650)
