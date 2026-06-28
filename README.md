@@ -1,50 +1,57 @@
-# Dashee - LiteLLM Pacing & Usage Metrics Dashboard
+<p align="center">
+  <img src="assets/logo.jpg" alt="Dashee Logo" width="120" style="border-radius: 30px;"/>
+</p>
 
-Dashee is a personal, native macOS desktop application for monitoring LiteLLM Gateway usage and budget pacing. Built with Swift, it features an elegant, Apple HIG-inspired user interface with fluid loading states and dynamic color thresholds for budget pacing.
+<h1 align="center">Dashee</h1>
+<p align="center">
+  <strong>Native macOS dashboard for LiteLLM usage pacing</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/snehmatic/dashee/releases">
+    <img src="https://img.shields.io/github/v/release/snehmatic/dashee?style=flat-square&color=blue" alt="Release">
+  </a>
+  <a href="https://github.com/snehmatic/dashee/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/snehmatic/dashee/release.yml?style=flat-square" alt="Build Status">
+  </a>
+  <img src="https://img.shields.io/badge/macOS-13.0%2B-lightgrey?style=flat-square&logo=apple" alt="macOS 13.0+">
+</p>
+
+---
+
+Dashee is a very personal, minimal, native desktop utility for monitoring [LiteLLM Gateway](https://github.com/BerriAI/litellm) API limits and budget pacing. Built entirely in SwiftUI, it runs as a lightweight background agent on macOS.
 
 ## Features
-- **Native macOS Experience:** Clean typography, clean and minimal design, and sleek container cards.
-- **Dynamic Pacing Indicator:** Visual budget burn progress shifting from Green to Yellow to Red.
-- **Velocity Tracking:** Tracks historical average spend and prevents daily overruns.
-- **Local & Secure:** Runs completely decoupled from a browser context. Credentials are saved locally on your Mac.
 
-## Quick Start & Installation
+- **Background Agent (`LSUIElement`)**: Runs silently in the background without cluttering the Dock or App Switcher.
+- **Menu Bar Integration**: Quick access drop-down showing daily spend limits and budget burn progress.
+- **Native Charts**: View historical 7-day spend trends natively via Swift Charts.
+- **Local Storage**: API credentials and config are saved securely to macOS `UserDefaults`.
 
-You can install Dashee directly via Homebrew!
+## Installation
+
+Install via Homebrew:
 
 ```bash
-# Add the custom tap
 brew tap snehmatic/dashee
-
-# Install the app
 brew install --cask dashee
 ```
 
-Once installed, simply open **Dashee** from your Applications folder or Spotlight.
+## Build from Source
 
-## Manual Build Instructions
+This app is built via `swiftc` without requiring Xcode project files.
 
-If you wish to build the app from source:
+```bash
+git clone https://github.com/snehmatic/dashee.git
+cd dashee
+make build
+```
+The compiled bundle will be available in the `dist/` directory.
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/snehmatic/dashee.git
-   cd dashee
-   ```
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Build the macOS `.app` bundle:
-   ```bash
-   make build
-   ```
-   The `Dashee.app` file will be generated in the `dist/` directory.
+## Documentation
 
-## Configuration
-When you first run Dashee, click the **Settings** button to provide:
-- Your LiteLLM Base URL
-- Your API Key
-- Your User ID
+For deployment workflows and release instructions, refer to the [Release Guide](RELEASE_GUIDE.md).
 
-These credentials are securely stored in `~/Library/Application Support/Dashee/config.json`.
+## License
+
+[Apache License 2.0](LICENSE)

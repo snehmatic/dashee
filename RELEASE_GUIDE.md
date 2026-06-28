@@ -12,13 +12,13 @@ git push origin main
 ```
 
 ## 2. Trigger the Automated Build
-We use Git Tags to trigger the GitHub Actions workflow (`.github/workflows/release.yml`). To create a new release (e.g., `v1.0.1`), run:
+We use Git Tags to trigger the GitHub Actions workflow (`.github/workflows/release.yml`). To create a new release (e.g., `v3.0.0`), run:
 ```bash
 # Still in the dashee/app repository
-git tag v1.0.1
-git push origin v1.0.1
+git tag v3.0.0
+git push origin v3.0.0
 ```
-> **What happens next?** GitHub Actions will automatically catch this tag, spin up a macOS runner, install Python/PySide6, compile your `.app` using PyInstaller, zip it into `Dashee-macOS.zip`, and attach it to a new GitHub Release page. 
+> **What happens next?** GitHub Actions will automatically catch this tag, spin up a macOS runner, directly compile the `.app` bundle natively using `swiftc`, zip it into `Dashee-macOS.zip`, and attach it to a new GitHub Release page. 
 
 ## 3. Update the Homebrew Cask
 For users to be able to install the new version via `brew upgrade`, you must update the Homebrew formula.
@@ -29,12 +29,11 @@ For users to be able to install the new version via `brew upgrade`, you must upd
    ```
 2. Open `Casks/dashee.rb` and update the `version` variable to match your new tag (without the 'v'):
    ```ruby
-   version "1.0.1" # Update this line!
+   version "3.0.0" # Update this line!
    ```
 3. Commit and push the updated Cask:
    ```bash
-   git add Casks/dashee.rb
-   git commit -m "Bump version to 1.0.1"
+   git commit -am "Bump version to 3.0.0"
    git push origin main
    ```
 
