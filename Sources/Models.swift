@@ -45,32 +45,51 @@ class AppState: ObservableObject {
     @AppStorage("isDarkMode") var isDarkMode: Bool = true
     @AppStorage("useGlassEffect") var useGlassEffect: Bool = true
     
+    // Alerts & Background
+    @AppStorage("autoRefreshInterval") var autoRefreshInterval: Double = 15.0 // Minutes
+    @AppStorage("alertThreshold") var alertThreshold: Double = 1.2 // 120% of daily spend
+    
+    private var refreshTimer: Timer?
+    
     init() {
         requestNotificationPermission()
+        setupTimer()
     }
     
     func requestNotificationPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in }
     }
     
+    func setupTimer() {
+        refreshTimer?.invalidate()
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: autoRefreshInterval * 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.refresh(isBackground: true)
+            }
+        }
+    }
+    
     func checkAndNotifySpike(metrics: PacingMetrics) {
-        if metrics.dailySpendLeft > 0 && metrics.todaysSpend > (metrics.dailySpendLeft * 1.2) {
+        if metrics.dailySpendLeft > 0 && metrics.todaysSpend > (metrics.dailySpendLeft * alertThreshold) {
+            let percentStr = String(format: "%.0f", alertThreshold * 100)
             let content = UNMutableNotificationContent()
             content.title = "Budget Spike Detected!"
-            content.body = "You have spent $\(String(format: "%.2f", metrics.todaysSpend)) today, which is 20% over your daily allowance of $\(String(format: "%.2f", metrics.dailySpendLeft))."
+            content.body = "You have spent $\(String(format: "%.2f", metrics.todaysSpend)) today, which is over \(percentStr)% of your daily allowance ($\(String(format: "%.2f", metrics.dailySpendLeft)))."
             content.sound = .default
-            let request = UNNotificationRequest(identifier: "spike_warning", content: content, trigger: nil)
+            let request = UNNotificationRequest(identifier: "spike_warning_\(Date().timeIntervalSince1970)", content: content, trigger: nil)
             UNUserNotificationCenter.current().add(request)
         }
     }
     
-    func refresh() {
+    func refresh(isBackground: Bool = false) {
         guard !baseURL.isEmpty, !apiKey.isEmpty, !userId.isEmpty else {
             errorMessage = "Please configure Base URL, API Key, and User ID in Settings."
             return
         }
         
-        isRefreshing = true
+        if !isBackground {
+            isRefreshing = true
+        }
         errorMessage = nil
         
         let cleanedBaseURL = baseURL.replacingOccurrences(of: "/v1", with: "").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -85,13 +104,17 @@ class AppState: ObservableObject {
                 DispatchQueue.main.async {
                     self.metrics = newMetrics
                     self.availableModels = newModels
-                    self.isRefreshing = false
+                    if !isBackground {
+                        self.isRefreshing = false
+                    }
                     self.checkAndNotifySpike(metrics: newMetrics)
                 }
             } catch {
                 DispatchQueue.main.async {
                     self.errorMessage = error.localizedDescription
-                    self.isRefreshing = false
+                    if !isBackground {
+                        self.isRefreshing = false
+                    }
                 }
             }
         }

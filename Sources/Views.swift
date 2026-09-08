@@ -305,6 +305,32 @@ struct SettingsView: View {
                 
                 Divider().padding(.vertical, 8)
                 
+                Section(header: Text("Background Monitoring & Alerts")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Refresh Interval:")
+                            Spacer()
+                            Text("\(Int(appState.autoRefreshInterval)) mins")
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $appState.autoRefreshInterval, in: 5...120, step: 5)
+                            .onChange(of: appState.autoRefreshInterval) { _ in
+                                appState.setupTimer()
+                            }
+                        
+                        HStack {
+                            Text("Alert Threshold:")
+                            Spacer()
+                            Text("\(Int(appState.alertThreshold * 100))% of daily budget")
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $appState.alertThreshold, in: 0.5...2.0, step: 0.1)
+                    }
+                    .padding(.vertical, 4)
+                }
+                
+                Divider().padding(.vertical, 8)
+                
                 Section(header: Text("Appearance")) {
                     Toggle("Dark Mode", isOn: $appState.isDarkMode)
                     Toggle("Liquid Glass / Transparency Effect", isOn: $appState.useGlassEffect)
