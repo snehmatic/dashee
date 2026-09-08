@@ -2,6 +2,15 @@ import Foundation
 import SwiftUI
 import UserNotifications
 
+struct ModelPricing: Identifiable, Equatable {
+    let id = UUID()
+    let modelName: String
+    let provider: String
+    let inputCost: Double
+    let outputCost: Double
+    var totalCost: Double { inputCost + outputCost }
+}
+
 struct DailySpend: Identifiable {
     let id = UUID()
     let date: Date
@@ -24,6 +33,7 @@ struct PacingMetrics {
 @MainActor
 class AppState: ObservableObject {
     @Published var metrics = PacingMetrics()
+    @Published var availableModels: [ModelPricing] = []
     @Published var isRefreshing: Bool = false
     @Published var errorMessage: String? = nil
     
@@ -67,9 +77,14 @@ class AppState: ObservableObject {
         
         Task {
             do {
-                let newMetrics = try await LiteLLMAPI.fetchMetrics(baseURL: cleanedBaseURL, apiKey: apiKey, userId: userId)
+                async let newMetricsTask = LiteLLMAPI.fetchMetrics(baseURL: cleanedBaseURL, apiKey: apiKey, userId: userId)
+                async let newModelsTask = LiteLLMAPI.fetchModels(baseURL: cleanedBaseURL, apiKey: apiKey)
+                
+                let (newMetrics, newModels) = try await (newMetricsTask, newModelsTask)
+                
                 DispatchQueue.main.async {
                     self.metrics = newMetrics
+                    self.availableModels = newModels
                     self.isRefreshing = false
                     self.checkAndNotifySpike(metrics: newMetrics)
                 }
@@ -174,5 +189,56 @@ class LiteLLMAPI {
         outFormatter.timeZone = TimeZone(abbreviation: "UTC")
         
         return PacingMetrics(userId: userId, syncTime: outFormatter.string(from: Date()), todaysSpend: todaysSpend, spend: spend, maxBudget: maxBudget, burnPercent: burnPercent, avgSpendPerDay: avgSpendPerDay, dailySpendLeft: dailySpendLeft, daysToReset: daysToReset, history: history)
+    }
+
+    static func fetchModels(baseURL: String, apiKey: String) async throws -> [ModelPricing] {
+        guard let url = URL(string: "\(baseURL)/model/info") else { throw APIError.invalidURL }
+        var request = URLRequest(url: url)
+        request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw APIError.networkError("HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+        }
+        
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dataArray = json["data"] as? [[String: Any]] else {
+            throw APIError.decodeError
+        }
+        
+        var models: [ModelPricing] = []
+        for item in dataArray {
+            let modelName = item["model_name"] as? String ?? "Unknown"
+            
+            var provider = "Unknown"
+            if let params = item["litellm_params"] as? [String: Any],
+               let modelString = params["model"] as? String {
+                let parts = modelString.split(separator: "/")
+                if parts.count > 1 {
+                    provider = String(parts[0]).capitalized
+                } else {
+                    provider = "LiteLLM"
+                }
+            } else if let info = item["model_info"] as? [String: Any], let baseModel = info["base_model"] as? String {
+                 let parts = baseModel.split(separator: "/")
+                if parts.count > 1 {
+                    provider = String(parts[0]).capitalized
+                } else {
+                     provider = "LiteLLM"
+                }
+            }
+            
+            var inCost = 0.0
+            var outCost = 0.0
+            
+            if let info = item["model_info"] as? [String: Any] {
+                if let iC = info["input_cost_per_token"] as? Double { inCost = iC }
+                if let oC = info["output_cost_per_token"] as? Double { outCost = oC }
+            }
+            
+            models.append(ModelPricing(modelName: modelName, provider: provider, inputCost: inCost, outputCost: outCost))
+        }
+        
+        return models.sorted(by: { $0.totalCost < $1.totalCost })
     }
 }
