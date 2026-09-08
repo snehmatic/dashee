@@ -72,6 +72,7 @@ struct VisualEffectView: NSViewRepresentable {
 struct DashboardView: View {
     @EnvironmentObject var appState: AppState
     @State private var showingSettings = false
+    @State private var showingOnboarding = false
     @State private var hoveredDate: Date? = nil
     @State private var selectedTab = 0
     
@@ -161,14 +162,14 @@ struct DashboardView: View {
                         // Primary Metrics
                         HStack(spacing: 20) {
                         MetricCard(title: "TODAY'S SPEND", 
-                                   value: String(format: "$%.2f", appState.metrics.todaysSpend),
+                                   value: String(format: "\(appState.currencySymbol)%.2f", appState.metrics.todaysSpend),
                                    isWarning: appState.metrics.todaysSpend > appState.metrics.dailySpendLeft && appState.metrics.dailySpendLeft > 0)
                         
                         MetricCard(title: "TOTAL SPENT", 
-                                   value: String(format: "$%.2f", appState.metrics.spend))
+                                   value: String(format: "\(appState.currencySymbol)%.2f", appState.metrics.spend))
                         
                         MetricCard(title: "MAX BUDGET", 
-                                   value: appState.metrics.maxBudget != nil ? String(format: "$%.2f", appState.metrics.maxBudget!) : "No Limit")
+                                   value: appState.metrics.maxBudget != nil ? String(format: "\(appState.currencySymbol)%.2f", appState.metrics.maxBudget!) : "No Limit")
                     }
                     
                     // Budget Pacing
@@ -188,7 +189,7 @@ struct DashboardView: View {
                             }
                             .frame(height: 12)
                             
-                            let mbStr = appState.metrics.maxBudget != nil ? String(format: "$%.2f", appState.metrics.maxBudget!) : "No Limit"
+                            let mbStr = appState.metrics.maxBudget != nil ? String(format: "\(appState.currencySymbol)%.2f", appState.metrics.maxBudget!) : "No Limit"
                             Text("\(String(format: "%.1f", appState.metrics.burnPercent))% ($\(String(format: "%.2f", appState.metrics.spend)) / \(mbStr)) • \(appState.metrics.daysToReset) days to reset")
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
@@ -198,10 +199,10 @@ struct DashboardView: View {
                     // Velocity Panel
                     HStack(spacing: 20) {
                         MetricCard(title: "AVG SPEND / DAY", 
-                                   value: String(format: "$%.2f", appState.metrics.avgSpendPerDay))
+                                   value: String(format: "\(appState.currencySymbol)%.2f", appState.metrics.avgSpendPerDay))
                         
                         MetricCard(title: "ALLOWED SPEND / DAY", 
-                                   value: String(format: "$%.2f", appState.metrics.dailySpendLeft))
+                                   value: String(format: "\(appState.currencySymbol)%.2f", appState.metrics.dailySpendLeft))
                     }
                     
                     if !appState.metrics.history.isEmpty {
@@ -221,7 +222,7 @@ struct DashboardView: View {
                                         .foregroundStyle(Color.secondary.opacity(0.5))
                                         .annotation(position: .top) {
                                             if let point = appState.metrics.history.first(where: { Calendar.current.isDate($0.date, inSameDayAs: hoveredDate) }) {
-                                                Text("$\(String(format: "%.2f", point.spend))")
+                                                Text("\(appState.currencySymbol)\(String(format: "%.2f", point.spend))")
                                                     .font(.caption.bold())
                                                     .padding(6)
                                                     .background(Color(NSColor.windowBackgroundColor))
@@ -272,10 +273,14 @@ struct DashboardView: View {
             SettingsView()
                 .environmentObject(appState)
         }
+        .sheet(isPresented: $showingOnboarding) {
+            OnboardingView()
+                .environmentObject(appState)
+        }
         .onAppear {
             NSApp.activate(ignoringOtherApps: true)
             if appState.baseURL.isEmpty {
-                showingSettings = true
+                showingOnboarding = true
             } else {
                 appState.refresh()
             }
@@ -332,6 +337,14 @@ struct SettingsView: View {
                 Divider().padding(.vertical, 8)
                 
                 Section(header: Text("Appearance")) {
+                    HStack {
+                        Text("Currency Symbol")
+                        Spacer()
+                        TextField("$", text: $appState.currencySymbol)
+                            .frame(width: 50)
+                            .multilineTextAlignment(.trailing)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
                     Toggle("Dark Mode", isOn: $appState.isDarkMode)
                     Toggle("Liquid Glass / Transparency Effect", isOn: $appState.useGlassEffect)
                 }
@@ -385,7 +398,7 @@ struct MenuBarWidgetView: View {
                             .foregroundColor(.secondary)
                         
                         let isOver = appState.metrics.todaysSpend > appState.metrics.dailySpendLeft && appState.metrics.dailySpendLeft > 0
-                        Text(String(format: "$%.2f", appState.metrics.todaysSpend))
+                        Text(String(format: "\(appState.currencySymbol)%.2f", appState.metrics.todaysSpend))
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundColor(isOver ? .red : .primary)
                     }
@@ -394,7 +407,7 @@ struct MenuBarWidgetView: View {
                         Text("ALLOWED / DAY")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.secondary)
-                        Text(String(format: "$%.2f", appState.metrics.dailySpendLeft))
+                        Text(String(format: "\(appState.currencySymbol)%.2f", appState.metrics.dailySpendLeft))
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundColor(.green)
                     }
@@ -425,6 +438,36 @@ struct MenuBarWidgetView: View {
                         }
                     }
                     .frame(height: 8)
+                }
+                
+                if !appState.metrics.history.isEmpty {
+                    Divider().padding(.top, 4)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("7-DAY SPARKLINE")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        
+                        Chart {
+                            ForEach(appState.metrics.history) { point in
+                                LineMark(
+                                    x: .value("Date", point.date, unit: .day),
+                                    y: .value("Spend", point.spend)
+                                )
+                                .interpolationMethod(.catmullRom)
+                                .foregroundStyle(Color.accentColor)
+                                
+                                AreaMark(
+                                    x: .value("Date", point.date, unit: .day),
+                                    y: .value("Spend", point.spend)
+                                )
+                                .interpolationMethod(.catmullRom)
+                                .foregroundStyle(LinearGradient(gradient: Gradient(colors: [Color.accentColor.opacity(0.4), .clear]), startPoint: .top, endPoint: .bottom))
+                            }
+                        }
+                        .frame(height: 45)
+                        .chartXAxis(.hidden)
+                        .chartYAxis(.hidden)
+                    }
                 }
             }
             
@@ -512,11 +555,11 @@ struct ModelsTableView: View {
                                 HStack {
                                     Text(model.modelName)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(String(format: "$%.6f / $%.6f", model.inputCost, model.outputCost))
+                                    Text(String(format: "\(appState.currencySymbol)%.6f / \(appState.currencySymbol)%.6f", model.inputCost, model.outputCost))
                                         .frame(width: 150, alignment: .trailing)
                                         .font(.system(.caption, design: .monospaced))
                                         .foregroundColor(.secondary)
-                                    Text(String(format: "$%.4f", estimatedCost(for: model)))
+                                    Text(String(format: "\(appState.currencySymbol)%.4f", estimatedCost(for: model)))
                                         .frame(width: 100, alignment: .trailing)
                                         .font(.system(.body, design: .monospaced))
                                         .bold()
@@ -529,6 +572,64 @@ struct ModelsTableView: View {
                 }
             }
         }
+    }
+}
+
+struct OnboardingView: View {
+    @EnvironmentObject var appState: AppState
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        VStack(spacing: 30) {
+            Image(systemName: "chart.xyaxis.line")
+                .font(.system(size: 60))
+                .foregroundColor(.accentColor)
+                .padding(.top, 30)
+            
+            VStack(spacing: 10) {
+                Text("Welcome to Dashee")
+                    .font(.system(size: 28, weight: .bold))
+                Text("Connect your LiteLLM Gateway to monitor budget pacing, manage models, and receive background spike alerts.")
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 30)
+            }
+            
+            Form {
+                Section {
+                    TextField("Base URL (e.g. https://api.litellm.ai)", text: $appState.baseURL)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    SecureField("Admin API Key", text: $appState.apiKey)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    TextField("User ID", text: $appState.userId)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+            }
+            .padding(.horizontal, 30)
+            
+            Text("These credentials are saved securely in your Mac's Keychain / UserDefaults.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Button(action: {
+                presentationMode.wrappedValue.dismiss()
+                appState.refresh()
+            }) {
+                Text("Connect Dashboard")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(appState.baseURL.isEmpty || appState.apiKey.isEmpty || appState.userId.isEmpty ? Color.gray.opacity(0.5) : Color.accentColor)
+                    .cornerRadius(10)
+            }
+            .buttonStyle(.plain)
+            .disabled(appState.baseURL.isEmpty || appState.apiKey.isEmpty || appState.userId.isEmpty)
+            .padding(.horizontal, 30)
+            .padding(.bottom, 20)
+        }
+        .frame(width: 450)
+        .padding()
     }
 }
 

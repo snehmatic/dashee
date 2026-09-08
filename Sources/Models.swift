@@ -48,6 +48,7 @@ class AppState: ObservableObject {
     // Alerts & Background
     @AppStorage("autoRefreshInterval") var autoRefreshInterval: Double = 15.0 // Minutes
     @AppStorage("alertThreshold") var alertThreshold: Double = 1.2 // 120% of daily spend
+    @AppStorage("currencySymbol") var currencySymbol: String = "$"
     
     private var refreshTimer: Timer?
     
@@ -74,7 +75,7 @@ class AppState: ObservableObject {
             let percentStr = String(format: "%.0f", alertThreshold * 100)
             let content = UNMutableNotificationContent()
             content.title = "Budget Spike Detected!"
-            content.body = "You have spent $\(String(format: "%.2f", metrics.todaysSpend)) today, which is over \(percentStr)% of your daily allowance ($\(String(format: "%.2f", metrics.dailySpendLeft)))."
+            content.body = "You have spent \(currencySymbol)\(String(format: "%.2f", metrics.todaysSpend)) today, which is over \(percentStr)% of your daily allowance (\(currencySymbol)\(String(format: "%.2f", metrics.dailySpendLeft)))."
             content.sound = .default
             let request = UNNotificationRequest(identifier: "spike_warning_\(Date().timeIntervalSince1970)", content: content, trigger: nil)
             UNUserNotificationCenter.current().add(request)
