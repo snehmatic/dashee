@@ -73,6 +73,7 @@ struct DashboardView: View {
     @EnvironmentObject var appState: AppState
     @State private var showingSettings = false
     @State private var hoveredDate: Date? = nil
+    @State private var selectedTab = 0
     
     var progressColor: Color {
         let p = appState.metrics.burnPercent
@@ -149,8 +150,16 @@ struct DashboardView: View {
                             .cornerRadius(8)
                     }
                     
-                    // Primary Metrics
-                    HStack(spacing: 20) {
+                    Picker("", selection: $selectedTab) {
+                        Text("Pacing").tag(0)
+                        Text("Models").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.bottom, 10)
+
+                    if selectedTab == 0 {
+                        // Primary Metrics
+                        HStack(spacing: 20) {
                         MetricCard(title: "TODAY'S SPEND", 
                                    value: String(format: "$%.2f", appState.metrics.todaysSpend),
                                    isWarning: appState.metrics.todaysSpend > appState.metrics.dailySpendLeft && appState.metrics.dailySpendLeft > 0)
@@ -248,6 +257,9 @@ struct DashboardView: View {
                                 }
                             }
                         }
+                    }
+                    } else {
+                        ModelsTableView()
                     }
                     
                     Spacer()
@@ -413,6 +425,56 @@ struct MenuBarWidgetView: View {
         .frame(width: 280)
         // Match the user's selected mode
         .preferredColorScheme(appState.isDarkMode ? .dark : .light)
+    }
+}
+
+struct ModelsTableView: View {
+    @EnvironmentObject var appState: AppState
+    
+    var groupedModels: [String: [ModelPricing]] {
+        Dictionary(grouping: appState.availableModels, by: { $0.provider })
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if appState.availableModels.isEmpty {
+                Text("No models available. Pull to refresh or check settings.")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 40)
+            } else {
+                ForEach(groupedModels.keys.sorted(), id: \.self) { provider in
+                    GlassCard(title: provider) {
+                        VStack(spacing: 0) {
+                            HStack {
+                                Text("Model").bold().frame(maxWidth: .infinity, alignment: .leading)
+                                Text("Input Cost").bold().frame(width: 100, alignment: .trailing)
+                                Text("Output Cost").bold().frame(width: 100, alignment: .trailing)
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 8)
+                            
+                            Divider().padding(.bottom, 8)
+                            
+                            ForEach(groupedModels[provider]!) { model in
+                                HStack {
+                                    Text(model.modelName)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text(String(format: "$%.6f", model.inputCost))
+                                        .frame(width: 100, alignment: .trailing)
+                                        .font(.system(.body, design: .monospaced))
+                                    Text(String(format: "$%.6f", model.outputCost))
+                                        .frame(width: 100, alignment: .trailing)
+                                        .font(.system(.body, design: .monospaced))
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
