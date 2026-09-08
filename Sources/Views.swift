@@ -456,9 +456,17 @@ struct MenuBarWidgetView: View {
 
 struct ModelsTableView: View {
     @EnvironmentObject var appState: AppState
+    @AppStorage("simInputTokens") var simInputTokens: String = "1000"
+    @AppStorage("simOutputTokens") var simOutputTokens: String = "1000"
     
     var groupedModels: [String: [ModelPricing]] {
         Dictionary(grouping: appState.availableModels, by: { $0.provider })
+    }
+    
+    func estimatedCost(for model: ModelPricing) -> Double {
+        let inputs = Double(simInputTokens) ?? 0.0
+        let outputs = Double(simOutputTokens) ?? 0.0
+        return (model.inputCost * inputs) + (model.outputCost * outputs)
     }
     
     var body: some View {
@@ -469,13 +477,30 @@ struct ModelsTableView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, 40)
             } else {
+                GlassCard(title: "COST SIMULATOR") {
+                    HStack(spacing: 20) {
+                        VStack(alignment: .leading) {
+                            Text("Expected Input Tokens")
+                                .font(.caption).bold().foregroundColor(.secondary)
+                            TextField("e.g. 1000", text: $simInputTokens)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        VStack(alignment: .leading) {
+                            Text("Expected Output Tokens")
+                                .font(.caption).bold().foregroundColor(.secondary)
+                            TextField("e.g. 1000", text: $simOutputTokens)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                }
+                
                 ForEach(groupedModels.keys.sorted(), id: \.self) { provider in
                     GlassCard(title: provider) {
                         VStack(spacing: 0) {
                             HStack {
                                 Text("Model").bold().frame(maxWidth: .infinity, alignment: .leading)
-                                Text("Input Cost").bold().frame(width: 100, alignment: .trailing)
-                                Text("Output Cost").bold().frame(width: 100, alignment: .trailing)
+                                Text("Cost/Token (In / Out)").bold().frame(width: 150, alignment: .trailing)
+                                Text("Est. Cost").bold().frame(width: 100, alignment: .trailing)
                             }
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -487,12 +512,15 @@ struct ModelsTableView: View {
                                 HStack {
                                     Text(model.modelName)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text(String(format: "$%.6f", model.inputCost))
+                                    Text(String(format: "$%.6f / $%.6f", model.inputCost, model.outputCost))
+                                        .frame(width: 150, alignment: .trailing)
+                                        .font(.system(.caption, design: .monospaced))
+                                        .foregroundColor(.secondary)
+                                    Text(String(format: "$%.4f", estimatedCost(for: model)))
                                         .frame(width: 100, alignment: .trailing)
                                         .font(.system(.body, design: .monospaced))
-                                    Text(String(format: "$%.6f", model.outputCost))
-                                        .frame(width: 100, alignment: .trailing)
-                                        .font(.system(.body, design: .monospaced))
+                                        .bold()
+                                        .foregroundColor(estimatedCost(for: model) == 0 ? .secondary : .primary)
                                 }
                                 .padding(.vertical, 4)
                             }
